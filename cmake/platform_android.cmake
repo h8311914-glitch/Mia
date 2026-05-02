@@ -47,7 +47,7 @@ endfunction()
 function(platform_files)
     # copy res to android assets.
     # remove first for "forced copy"
-    # CMAKE_CURRENT_SOURCE_DIR -> "app/jni/Roja"
+    # CMAKE_CURRENT_SOURCE_DIR -> "app/jni/Mia"
     # so "CMAKE_CURRENT_SOURCE_DIR}/../.." is "app"
     # and we want it in "app/src/main/assets/mia_res/..."
 
@@ -78,3 +78,4 @@ function(platform_files)
             DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/../../src/main/res/mipmap-xxxhdpi)
 
 endfunction()
+
