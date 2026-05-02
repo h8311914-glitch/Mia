@@ -31,8 +31,8 @@
 #  define NUM_EXAMPLES 17
 #endif
 
-#define URL_HOST "https://github.com/renehorstmann/Roja/blob/main/apps/examples/src/"
-#define URL_HOST_MP "https://github.com/renehorstmann/Roja/blob/main/apps/MiaPaint/"
+#define URL_HOST "https://github.com/renehorstmann/Mia/blob/main/apps/examples/src/"
+#define URL_HOST_MP "https://github.com/renehorstmann/Mia/blob/main/apps/MiaPaint/"
 
 // protected example functions
 oobj ex_00_main(oobj root);
