@@ -172,3 +172,6 @@ MiaApp
 
 # Do not ignore directories named mia
 !mia/
+
+# Ignore the todo list
+TODO.md

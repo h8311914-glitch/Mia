@@ -124,7 +124,7 @@ static void app_main(oobj root)
      */
 
     /** Examples */
-    ex_main_splashed(root);  return;
+    // ex_main_splashed(root);  return;
     
     /** Tea Timer */
     // ex_tea_main_splashed(root);  return;
