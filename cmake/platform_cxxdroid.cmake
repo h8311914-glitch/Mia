@@ -20,12 +20,9 @@ function(platform_options)
     # some options just to set em here, cause CxxDroid does not allow nice cmake cache setups.
     # (or just to test faster...)
     # so these change alot...
-
-    set(MIA_USE_APP_CLIMBR false PARENT_SCOPE)
+    
     set(MIA_USE_APP_HELLO true PARENT_SCOPE)
- 
-    set(MIA_USE_APP_MS true PARENT_SCOPE)
-    set(MIA_USE_APP_MS_MAIN false PARENT_SCOPE)
+    
     set(MIA_USE_APP_MP true PARENT_SCOPE)
     set(MIA_USE_APP_MP_MAIN false PARENT_SCOPE)
     set(MIA_USE_APP_EX true PARENT_SCOPE)
@@ -77,6 +74,16 @@ function(platform_link)
         find_package(CURL REQUIRED)
         target_link_libraries(${MIA_PROJECT} ${CURL_LIBRARIES})
     endif ()
+endfunction()
+
+#
+# Copy files like resources, called in CMakeLists.txt
+#
+
+function(platform_files)
+    # noop
+endfunction()
+if ()
 endfunction()
 
 #
