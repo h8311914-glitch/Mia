@@ -1,0 +1,45 @@
+name: Build Mia Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build pkg-config gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+
+    - name: Setup Android NDK
+      run: |
+        wget -q https://dl.google.com/android/repository/android-ndk-r26c-linux.zip
+        unzip -q android-ndk-r26c-linux.zip
+        echo "ANDROID_NDK_HOME=${{ github.workspace }}/android-ndk-r26c" >> $GITHUB_ENV
+
+    - name: Build for Android
+      run: |
+        mkdir -p build-android
+        cd build-android
+        cmake .. \
+          -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+          -DANDROID_ABI=arm64-v8a \
+          -DANDROID_PLATFORM=android-24 \
+          -DANDROID_STL=c++_shared \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DMIA_ANDROID=ON
+        make -j$(nproc)
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: mia-android-app
+        path: build-android/*.apk
