@@ -1,156 +1,213 @@
-/**
- * Welcome to Mia :)
- * This will be the starting point of the app
- *      (at the end of this file is the main function)
- * Feel free to tinker around.
- * Can be used as your own app template.
- * To use git, fork the template [MiaApp](https://github.com/renehorstmann/MiaApp) instead.
- *     And clone it into the apps/ directory of Mia.
- *     The MiaApp template is mostly the same app as this hello mini app.
- *
- * Or start the Examples App; Tea App or Mia Paint.
- *
- * Also have a look at the examples which act as a tutorial for coding in Mia ;)
- */
-
 /** Only for the file containing the real main() function, before importing anything else */
 #define MIA_MAIN
 
-/**
- * Includes most of Mia
- * This header is located under "./include/mia.h";
- * The include directory "./include" may be used for your user code ( as well as this "./src" dir)
- */
+/** Includes most of Mia */
 #include "mia.h"
 
 
-/**
- * Includes the Examples App and Tea App (which is part of the examples)
- * Located in ./apps/
- */
-#include "ex/ex.h"
-
-/** Includes Mia Paint (also located in ./apps/) */
-#include <stdlib.h>
-
-#include "mp/mp.h"
-
-
-/**
- * Context Data for the hello world AView
- */
+/** Context Data for the game view */
 struct context {
-    vec4 bg_color;
-
-    oobj theme;
-    oobj gui;
-    oobj text;
+    // بازیکن
+    vec3 player_pos;
+    float player_vy;
+    float player_width;
+    float player_height;
+    float player_depth;
+    
+    // موانع
+    vec3 obs_pos[3];
+    vec3 obs_size[3];
+    float obs_speed[3];
+    vec4 obs_color[3];
+    
+    int score;
+    bool game_over;
+    float ground_y;
+    
+    // برای رندر
+    oobj logo_tex;
+    oobj render_obj;
 };
 
+/** ساخت یک تکسچر خالی برای رندر بازی */
+static oobj create_game_texture(oobj parent, int width, int height) {
+    return RTex_new(parent, NULL, width, height);
+}
 
+/** رسم یک مکعب ساده در فضای 2D (برای سادگی) */
+static void draw_cube_2d(oobj tex, vec2 pos, vec2 size, vec4 color) {
+    RTex_rect(tex, pos, size, color);
+}
 
 /**
  * Called once at start of this AView
- * @param view AView object
  */
-static void setup(oobj view)
-{
-    /** Get user context */
+static void setup(oobj view) {
     struct context *C = o_user_new0(view, *C, 1);
-
-    /** Logs an info string, works with formatting like printf */
-    o_log("hello world");
-
-    /** Setting some values in the context */
-    C->bg_color = R_GRAY_X(0.33);
-
-    /**
-     * Creating a small w based gui
-     */
-    C->theme = WTheme_new_tiny(view);
-    C->gui = WBox_new_v(view);
-    C->text = WText_new(C->gui, "HELLO WORLD!");
     
+    o_log("بازی سه‌بعدی افقی با Mia شروع شد!");
+    
+    // تنظیمات اولیه بازیکن
+    C->player_pos = vec3_(-5.0f, 0.5f, 0.0f);
+    C->player_vy = 0.0f;
+    C->player_width = 0.8f;
+    C->player_height = 0.8f;
+    C->player_depth = 0.8f;
+    
+    // تنظیم موانع
+    C->obs_pos[0] = vec3_(3.0f, 0.5f, 0.0f);
+    C->obs_size[0] = vec3_(1.0f, 0.8f, 0.8f);
+    C->obs_speed[0] = 3.0f;
+    C->obs_color[0] = vec4_(1, 0, 0, 1);
+    
+    C->obs_pos[1] = vec3_(6.0f, 1.5f, 0.0f);
+    C->obs_size[1] = vec3_(0.8f, 1.0f, 0.8f);
+    C->obs_speed[1] = 4.0f;
+    C->obs_color[1] = vec4_(1, 0.5, 0, 1);
+    
+    C->obs_pos[2] = vec3_(9.0f, 0.5f, 0.0f);
+    C->obs_size[2] = vec3_(1.2f, 0.6f, 0.8f);
+    C->obs_speed[2] = 3.5f;
+    C->obs_color[2] = vec4_(0.5, 0, 0, 1);
+    
+    C->score = 0;
+    C->game_over = false;
+    C->ground_y = -1.0f;
 }
 
 /**
- * Called every frame before rendering to handle simulation, events, etc.
- * @param view AView object
- * @param tex RTex to render to (or NULL for the backbuffer...)
- *            Even if available, please render in the render function
- * @param dt delta time in seconds (time between this and the last frame)
+ * Called every frame before rendering
  */
-static void update(oobj view, oobj tex, float dt)
-{
+static void update(oobj view, oobj tex, float dt) {
     struct context *C = o_user(view);
-
-    /** Update the gui */
-    WTheme_update(C->theme, C->gui, vec2_(0), vec2_(0));
-
+    
+    if (!C->game_over) {
+        // ---- کنترل بازیکن با کلیدها ----
+        if (AKey_down('d') || AKey_down(AKEY_RIGHT)) {
+            C->player_pos.x += 5.0f * dt;
+        }
+        if (AKey_down('a') || AKey_down(AKEY_LEFT)) {
+            C->player_pos.x -= 5.0f * dt;
+        }
+        
+        // پرش
+        if ((AKey_pressed(AKEY_SPACE) || AKey_pressed(AKEY_UP) || AKey_pressed('w')) 
+            && C->player_pos.y <= 0.5f) {
+            C->player_vy = 3.5f;
+        }
+        
+        // گرانش
+        C->player_vy -= 6.0f * dt;
+        C->player_pos.y += C->player_vy * dt;
+        if (C->player_pos.y < 0.5f) {
+            C->player_pos.y = 0.5f;
+            C->player_vy = 0.0f;
+        }
+        
+        // حرکت موانع
+        for (int i = 0; i < 3; i++) {
+            C->obs_pos[i].x -= C->obs_speed[i] * dt;
+            
+            // اگر مانع از صفحه خارج شد، دوباره از راست بیاد
+            if (C->obs_pos[i].x < -8.0f) {
+                C->obs_pos[i].x = 8.0f + (float)(rand() % 4);
+                C->obs_pos[i].y = 0.5f + (float)(rand() % 3) / 2.0f;
+                C->obs_speed[i] = 3.0f + (float)(rand() % 4);
+                C->score++;
+            }
+        }
+        
+        // ---- برخورد با موانع ----
+        for (int i = 0; i < 3; i++) {
+            float dx = fabs(C->player_pos.x - C->obs_pos[i].x);
+            float dy = fabs(C->player_pos.y - C->obs_pos[i].y);
+            float dz = fabs(C->player_pos.z - C->obs_pos[i].z);
+            
+            float halfW = C->player_width/2 + C->obs_size[i].x/2;
+            float halfH = C->player_height/2 + C->obs_size[i].y/2;
+            float halfD = C->player_depth/2 + C->obs_size[i].z/2;
+            
+            if (dx < halfW && dy < halfH && dz < halfD) {
+                C->game_over = true;
+            }
+        }
+    }
+    
+    // ریستارت با F5
+    if (C->game_over && AKey_pressed(AKEY_F5)) {
+        C->player_pos = vec3_(-5.0f, 0.5f, 0.0f);
+        C->player_vy = 0.0f;
+        C->obs_pos[0] = vec3_(3.0f, 0.5f, 0.0f);
+        C->obs_pos[1] = vec3_(6.0f, 1.5f, 0.0f);
+        C->obs_pos[2] = vec3_(9.0f, 0.5f, 0.0f);
+        C->score = 0;
+        C->game_over = false;
+    }
 }
-
 
 /**
  * Called every frame to render
  */
-static void render(oobj view, oobj tex, float dt)
-{
+static void render(oobj view, oobj tex, float dt) {
     struct context *C = o_user(view);
-
-    /** Clear the screen with the background color */
-    RTex_clear_full(tex, C->bg_color);
-
-    /** Renders the gui */
-    WTheme_render(C->theme, tex);
+    
+    // پاک کردن صفحه با رنگ آبی آسمانی
+    RTex_clear_full(tex, vec4_(0.53f, 0.81f, 0.98f, 1.0f));
+    
+    // رسم زمین (نوار سبز پایین)
+    RTex_rect(tex, vec2_(-10.0f, C->ground_y), vec2_(20.0f, 0.5f), vec4_(0, 0.7, 0, 1));
+    
+    // رسم بازیکن (مکعب آبی)
+    vec2 player_pos_2d = vec2_(C->player_pos.x, C->player_pos.y);
+    vec2 player_size = vec2_(C->player_width, C->player_height);
+    RTex_rect(tex, vec2_sub(player_pos_2d, vec2_scale(player_size, 0.5f)), player_size, vec4_(0, 0, 1, 1));
+    RTex_rect_border(tex, vec2_sub(player_pos_2d, vec2_scale(player_size, 0.5f)), player_size, vec4_(0, 0, 0.5, 1), 0.05f);
+    
+    // رسم موانع
+    for (int i = 0; i < 3; i++) {
+        vec2 obs_pos_2d = vec2_(C->obs_pos[i].x, C->obs_pos[i].y);
+        vec2 obs_size = vec2_(C->obs_size[i].x, C->obs_size[i].y);
+        RTex_rect(tex, vec2_sub(obs_pos_2d, vec2_scale(obs_size, 0.5f)), obs_size, C->obs_color[i]);
+        RTex_rect_border(tex, vec2_sub(obs_pos_2d, vec2_scale(obs_size, 0.5f)), obs_size, vec4_(0.2, 0.2, 0.2, 1), 0.05f);
+    }
+    
+    // نمایش امتیاز
+    char score_text[32];
+    sprintf(score_text, "امتیاز: %d", C->score);
+    vec2 text_pos = vec2_(-8.0f, 4.0f);
+    vec4 white = vec4_(1, 1, 1, 1);
+    RTex_text(tex, text_pos, 0.8f, white, score_text);
+    
+    // Game Over
+    if (C->game_over) {
+        RTex_text(tex, vec2_(-4.0f, 0.0f), 1.5f, vec4_(1, 0, 0, 1), "GAME OVER!");
+        RTex_text(tex, vec2_(-4.5f, -1.0f), 0.8f, vec4_(0.3, 0.3, 0.3, 1), "F5 برای شروع دوباره");
+    }
+    
+    // راهنمای کنترل
+    RTex_text(tex, vec2_(-8.0f, -4.0f), 0.5f, vec4_(0.3, 0.3, 0.3, 1), "کنترل: A/D یا چپ/راست | Space/Up برای پرش");
 }
 
 /**
- * Starting point of the mia app with all systems initialized
- * @param root OObj to allocate on, acts as root parent for all objects
+ * Starting point of the mia app
  */
-static void app_main(oobj root)
-{
-    /**
-     * Uncomment to install a virtual stage which may be resized or to take screenshots
-     */
-    // x_viewvirtual_scene_install_stage(root, ivec2_(180, 180));
-
+static void app_main(oobj root) {
     x_install();
     
-
-    /**
-     * Apps
-     * Remove line comments to start
-     */
-
-    /** Examples */
-    // ex_main_splashed(root);  return;
-    
-    /** Tea Timer */
-    // ex_tea_main_splashed(root);  return;
-
-    /** Mia Paint */
-    // mp_main_splashed(root, NULL);  return;
-
-    /**
-     * AScene with the AView of this main.c hello world file
-     */
+    /** AScene with the AView of this main.c hello world file */
     oobj view = AView_new(root, setup, update, render);
     oobj scene = AScene_new(root, view, true, AScene_SAFE);
     AScene_opaque_set(scene, false);
 }
 
-
 /**
  * Actual c main entry point.
- * This file needs "#define MIA_MAIN" before the includes...
  */
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     struct a_app_run_options options = a_app_run_options_default();
     options.mic_enable = true;
     options.log_level = O_LOG_INFO;
-
+    
     a_app_run(app_main, &options);
     return 0;
 }
